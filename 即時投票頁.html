@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>你覺得他讚嗎？</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --fg:#0b1220;
+      --muted:#475569;
+      --card:#ffffff;
+      --line:#e5e7eb;
+      --accent:#0ea5a3;
+      --danger:#ef4444;
+    }
+    html,body{height:100%}
+    body{margin:0;background:#fff;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",Roboto,Helvetica,Arial;font-size:20px;line-height:1.5}
+    .wrap{min-height:100%;display:flex;flex-direction:column}
+    header{padding:16px;text-align:center;font-weight:800;letter-spacing:.02em;color:var(--muted)}
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:16px}
+    .card{width:min(960px,100%);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:0 10px 30px rgba(41,56,78,.06)}
+    .center{display:flex;align-items:center;justify-content:center;text-align:center}
+
+    .headline{font-weight:900;line-height:1.15;margin:8px auto 12px;color:#0f172a}
+    .headline span{font-size:clamp(26px,6vw,52px)}
+    .headline .big-like{font-size:clamp(72px,16vw,160px);color:var(--accent);text-shadow:0 10px 28px rgba(14,165,163,.28)}
+
+    .sub{color:var(--muted);font-size:18px;margin-top:6px}
+
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media (min-width:700px){.grid{grid-template-columns:1fr 1fr}}
+
+    .panel{background:linear-gradient(180deg,#fff,#fbfdff);border:1px solid var(--line);border-radius:16px;padding:16px}
+    .timer{font-variant-numeric:tabular-nums;font-size:clamp(32px,7vw,56px);font-weight:900;color:#0f766e}
+    .counts{display:flex;justify-content:center;gap:18px;font-size:clamp(24px,6vw,40px);font-weight:900}
+    .counts .like{color:#0f766e}
+
+    .btn{appearance:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer;border:none;border-radius:18px;padding:18px 16px;width:100%;font-size:clamp(24px,6vw,40px);font-weight:900;letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .06s ease,filter .2s ease,box-shadow .2s}
+    .btn:active{transform:scale(.98)}
+    .btn[disabled]{opacity:.4;filter:grayscale(.1);cursor:not-allowed}
+
+    .btn-like{background:linear-gradient(180deg,var(--accent),#19b7b3);color:#062b29;box-shadow:0 6px 16px rgba(14,165,163,.28)}
+    .btn-dislike{background:linear-gradient(180deg,var(--danger),#e24646);color:#4a1010;box-shadow:0 6px 16px rgba(239,68,68,.25)}
+
+    .two-col{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+
+    @keyframes wiggle{0%{transform:translateY(0) rotate(0)}25%{transform:translateY(-1px) rotate(-.8deg)}50%{transform:translateY(0) rotate(.5deg)}75%{transform:translateY(1px) rotate(-.5deg)}100%{transform:translateY(0) rotate(0)}}
+    .shake{animation:wiggle 1200ms ease-in-out infinite}
+    @media (prefers-reduced-motion:reduce){.shake{animation:none}}
+
+    .hidden{display:none}
+    .row{display:flex;align-items:center;justify-content:center;gap:10px}
+    .input{width:100%;border-radius:12px;background:#ffffff;border:1px solid var(--line);padding:16px 14px;color:var(--fg);font-size:18px}
+    .small{font-size:16px;color:var(--muted)}
+    .toolbar{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+    .tool{padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--fg);font-weight:800;cursor:pointer;box-shadow:0 4px 10px rgba(15,118,110,.05)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>你覺得他讚嗎？｜行動投票</header>
+  <main>
+    <div class="card">
+
+      <!-- 起始畫面 -->
+      <section id="startScreen">
+        <div class="center">
+          <div>
+            <div class="headline">
+              <span>你覺得他</span>
+              <span class="big-like">讚</span>
+              <span>嗎？</span>
+            </div>
+            <p class="sub">輸入提案人編號，按「開始投票」即可投票！</p>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:12px">
+          <div class="row" style="gap:12px; flex-wrap:wrap">
+            <input id="roomIdInput" class="input" placeholder="提案人編號（請輸入後再按開始投票）" inputmode="latin" autocomplete="off" />
+            <button id="startBtn" class="tool" style="background:linear-gradient(180deg,#eafff8,#ffffff);border-color:#bfeee0">開始投票</button>
+          </div>
+          <div class="small" id="roomHint" style="text-align:center;margin-top:8px">目前提案人編號：<b id="roomLabel">default</b></div>
+        </div>
+
+        <div class="panel" style="margin-top:12px">
+          <div class="toolbar center">
+            <button id="exportBtn_start" class="tool">匯出 CSV</button>
+          </div>
+          <div class="small center">主持/評審可隨時匯出目前統計</div>
+        </div>
+      </section>
+
+      <!-- 投票畫面 -->
+      <section id="voteScreen" class="hidden">
+        <div class="center">
+          <div>
+            <div class="headline">
+              <span>你覺得他</span>
+              <span class="big-like">讚</span>
+              <span>嗎？</span>
+            </div>
+            <div class="sub">提案人編號：<b id="roomIdText">default</b> ｜ 剩餘時間</div>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:10px">
+          <div class="panel center">
+            <div class="timer"><span id="countdown">10</span>s</div>
+            <div class="counts" style="margin-top:6px">
+              <div class="like" style="font-size:clamp(32px,9vw,64px)">👍 <span id="likeCount">0</span></div>
+            </div>
+            <div class="small" id="statusLine" style="margin-top:6px;font-size:18px">即時更新</div>
+          </div>
+          <div class="panel">
+            <div class="two-col">
+              <button id="likeBtn" class="btn btn-like shake" aria-label="讚" style="font-size:clamp(28px,8vw,64px);padding:22px 18px">👍 讚</button>
+              <button id="dislikeBtn" class="btn btn-dislike shake" aria-label="不讚" style="font-size:clamp(18px,5vw,28px);padding:18px 14px">👎 不讚</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar" style="margin-top:10px">
+          <button id="exportBtn" class="tool">匯出 CSV</button>
+          <button id="roundBtn" class="tool">開始新回合</button>
+          <button id="backBtn" class="tool">返回選擇提案人</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+  <footer>避免重複投票：每回合每裝置僅能投一次（以「提案人編號＋回合」區分）。</footer>
+</div>
+<div id="toast" class="toast" role="status"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+<script>
+(function(){
+  // ==== Firebase 設定（Realtime Database）====
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJ5exOkNx0tcGyGKd1bCWyJ4mVGqpVFos",
+    authDomain: "proposal-competition.firebaseapp.com",
+    databaseURL: "https://proposal-competition-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "proposal-competition",
+    storageBucket: "proposal-competition.appspot.com",
+    messagingSenderId: "122321094641",
+    appId: "1:122321094641:web:d34d14f1e85c0b169fa650",
+    measurementId: "G-R8Z1271EXG"
+  };
+
+  let db = null;
+  let roomId = new URLSearchParams(location.search).get('room') || 'default';
+  let countdown = 10;             // 每回合秒數
+  let roundId = null;             // 目前回合 ID（雲端同步）
+  let endAt = 0;                  // 本回合截止時間（ms）
+  let tickTimer = null;
+  let voted = false;
+  let offlineCounts = {like:0, dislike:0};
+  const CLEAR_CODE = '1234';      // 管理認證碼
+
+  // 元素
+  const startScreen = document.getElementById('startScreen');
+  const voteScreen = document.getElementById('voteScreen');
+  const roomLabel = document.getElementById('roomLabel');
+  const roomIdInput = document.getElementById('roomIdInput');
+  const roomIdText = document.getElementById('roomIdText');
+  const startBtn = document.getElementById('startBtn');
+  const likeBtn = document.getElementById('likeBtn');
+  const dislikeBtn = document.getElementById('dislikeBtn');
+  const likeCountEl = document.getElementById('likeCount');
+  const countdownEl = document.getElementById('countdown');
+  const statusLine = document.getElementById('statusLine');
+  const exportBtn = document.getElementById('exportBtn');
+  const exportBtnStart = document.getElementById('exportBtn_start');
+  const backBtn = document.getElementById('backBtn');
+  const roundBtn = document.getElementById('roundBtn');
+  const toastEl = document.getElementById('toast');
+
+  roomLabel.textContent = roomId;
+  roomIdInput.value = '';
+
+  // 工具
+  function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'),1400); }
+  function lsKey(){ return `voted_${roomId}_${roundId||'na'}`; }
+  function setButtonsEnabled(on){ [likeBtn,dislikeBtn].forEach(b=> b.disabled = !on); }
+  function now(){ return Date.now(); }
+  function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
+
+  // Firebase 啟用或離線模式
+  let online = false;
+  try{
+    if (firebaseConfig && firebaseConfig.apiKey){
+      const app = firebase.initializeApp(firebaseConfig);
+      db = firebase.database(app);
+      online = true;
+      statusLine.textContent = '即時更新（雲端）';
+    } else {
+      statusLine.textContent = '本機示範（未連雲端）';
+    }
+  }catch(e){
+    console.warn('Firebase init failed', e);
+    statusLine.textContent = '本機示範（未連雲端）';
+  }
+
+  // 綁定雲端監聽（統計）
+  function bindLiveCounts(){
+    if(!online || !db) return;
+    const countsRef = db.ref(`rooms/${roomId}/counts`);
+    countsRef.on('value', snap => {
+      const val = snap.val() || {like:0, dislike:0};
+      likeCountEl.textContent = val.like|0;
+    });
+  }
+
+  // 綁定回合（主持人按「開始新回合」會更新）
+  function bindRound(){
+    if(!online || !db){
+      if(!roundId){ roundId = 'local'; }
+      startCountdown();
+      return;
+    }
+    const roundRef = db.ref(`rooms/${roomId}/round`);
+    roundRef.on('value', snap => {
+      const val = snap.val() || {};
+      const newRound = val.current || null;
+      const serverEndAt = val.endAt || null;
+      if(!newRound){
+        statusLine.textContent = '等待主持人開始新回合';
+        setButtonsEnabled(false);
+        roundId = null;
+        return;
+      }
+      const changed = newRound !== roundId;
+      roundId = newRound;
+      voted = !!localStorage.getItem(lsKey());
+      endAt = serverEndAt || 0;
+      clearInterval(tickTimer);
+      if(endAt){
+        tickTimer = setInterval(()=>{
+          const remain = Math.ceil((endAt - now())/1000);
+          const v = clamp(remain,0,10);
+          countdownEl.textContent = v;
+          setButtonsEnabled(!voted && v>0);
+          if(v<=0){ clearInterval(tickTimer); setButtonsEnabled(false); }
+        },200);
+      } else if(changed){
+        startCountdown();
+      }
+      statusLine.textContent = '即時更新';
+    });
+  }
+
+  // 投票
+  function vote(type){
+    if(voted){ toast('此裝置本回合已投過票'); return; }
+    if(now() > endAt){ toast('本回合已結束'); return; }
+    voted = true; localStorage.setItem(lsKey(),'1'); setButtonsEnabled(false);
+    if(online && db){
+      const ref = db.ref(`rooms/${roomId}/counts/${type}`);
+      ref.transaction(cur => (cur||0) + 1);
+      const log = db.ref(`rooms/${roomId}/logs`).push();
+      log.set({t: firebase.database.ServerValue.TIMESTAMP, type, round: roundId});
+    }else{
+      offlineCounts[type]++; renderCounts();
+    }
+  }
+
+  // 畫面更新
+  function renderCounts(){
+    likeCountEl.textContent = online ? likeCountEl.textContent : offlineCounts.like;
+  }
+
+  // 本地倒數（僅離線或雲端未提供 endAt 時做後備）
+  function startCountdown(){
+    endAt = now() + countdown*1000; countdownEl.textContent = countdown;
+    setButtonsEnabled(!voted);
+    clearInterval(tickTimer);
+    tickTimer = setInterval(()=>{
+      const remain = Math.ceil((endAt - now())/1000);
+      const v = clamp(remain,0,10);
+      countdownEl.textContent = v;
+      if(v<=0){ clearInterval(tickTimer); setButtonsEnabled(false); }
+    },200);
+  }
+
+  // 匯出 CSV
+  async function exportCSV(){
+    let like = 0, dislike = 0;
+    if(online && db){
+      const snap = await db.ref(`rooms/${roomId}/counts`).get();
+      const val = snap.val() || {like:0, dislike:0};
+      like = val.like|0; dislike = val.dislike|0;
+    }else{ like = offlineCounts.like; dislike = offlineCounts.dislike; }
+    const ts = new Date().toISOString();
+    const csv = `room,round,like,dislike,timestamp\n${roomId},${roundId||''},${like},${dislike},${ts}\n`;
+    const blob = new Blob(["\ufeff"+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `vote_counts_${roomId}_${roundId||'cur'}.csv`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+  }
+
+  // 開始新回合（主持人）
+  async function startNewRound(){
+    const code = window.prompt('輸入認證碼以開始新回合：');
+    if(code !== CLEAR_CODE){ if(code!==null) toast('認證碼錯誤'); return; }
+    const newId = 'r' + Date.now().toString(36);
+    const endAtMs = Date.now() + countdown*1000;
+
+    if(online && db){
+      const updates = {};
+      updates[`rooms/${roomId}/counts`] = {like:0, dislike:0};
+      updates[`rooms/${roomId}/round`] = {current:newId, endAt:endAtMs};
+      await db.ref().update(updates);
+      toast('已開始新回合');
+    }else{
+      offlineCounts = {like:0, dislike:0};
+      roundId = newId; renderCounts();
+      endAt = endAtMs; startCountdown();
+      toast('已開始新回合（本機）');
+    }
+  }
+
+  // 事件
+  startBtn.addEventListener('click', ()=>{
+    const input = (roomIdInput.value||'').trim();
+    if(input) roomId = input;
+    document.getElementById('roomIdText').textContent = roomId;
+    document.getElementById('roomLabel').textContent = roomId;
+    startScreen.classList.add('hidden');
+    voteScreen.classList.remove('hidden');
+    bindLiveCounts();
+    bindRound();
+  });
+
+  likeBtn.addEventListener('click', ()=> vote('like'));
+  dislikeBtn.addEventListener('click', ()=> vote('dislike'));
+  exportBtn.addEventListener('click', exportCSV);
+  exportBtnStart.addEventListener('click', exportCSV);
+  backBtn.addEventListener('click', ()=>{
+    try{
+      if(online && db){
+        try{ db.ref(`rooms/${roomId}/counts`).off(); }catch(e){}
+        try{ db.ref(`rooms/${roomId}/round`).off(); }catch(e){}
+      }
+    }catch(e){}
+    clearInterval(tickTimer);
+    setButtonsEnabled(false);
+    voted = false; roundId = null; endAt = 0;
+    voteScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+    roomIdInput.focus();
+  });
+
+  roundBtn.addEventListener('click', startNewRound);
+
+  // 首次渲染（離線模式可見）
+  renderCounts();
+
+  /* =============================
+     測試（僅在 ?test=1 時啟用）
+     目的：基本 DOM 與離線投票流程檢查。
+  ==============================*/
+  (function runTests(){
+    const usp = new URLSearchParams(location.search);
+    if(usp.get('test') !== '1') return;
+    const results = [];
+    function t(name, fn){
+      try{ fn(); results.push({name, ok:true}); }
+      catch(e){ console.error('TEST FAIL:', name, e); results.push({name, ok:false, err:e}); }
+    }
+    t('elements-exist', ()=>{
+      console.assert(startBtn && likeBtn && dislikeBtn && exportBtn && roundBtn && backBtn, '必需按鈕不存在');
+      console.assert(roomIdInput && roomIdText && likeCountEl && countdownEl, '必需元素不存在');
+    });
+    t('clear-code', ()=>{ console.assert(CLEAR_CODE === '1234', '認證碼非 1234'); });
+    t('lsKey-has-round', ()=>{ roundId = 'RTEST'; console.assert(lsKey().includes('RTEST'), 'lsKey 未含回合'); });
+    t('offline-increment', ()=>{
+      if(!online){
+        const beforeLike = Number(likeCountEl.textContent)||0;
+        vote('like');
+        const afterLike = Number(likeCountEl.textContent)||0;
+        console.assert(afterLike === beforeLike + 1 || voted, '離線按讚未遞增');
+      }
+    });
+    t('countdown-range', ()=>{
+      startCountdown();
+      const v = Number(countdownEl.textContent);
+      console.assert(v >= 0 && v <= 10, '倒數超出範圍');
+    });
+    t('firebase-paths', ()=>{
+      if(online){
+        const p1 = `rooms/${roomId}/counts`;
+        const p2 = `rooms/${roomId}/round`;
+        console.assert(p1.includes('rooms/') && p2.includes('rooms/'), '監聽路徑錯誤');
+      }
+    });
+    console.table(results);
+  })();
+})();
+</script>
+
+<!-- 使用說明（可刪）
+1) 起始：輸入提案人編號 → 開始投票。
+2) 回合：主持人按「開始新回合」→ 輸入 1234 → 重設統計並同步 10 秒倒數。
+3) 規則：每回合每裝置僅能投一次；未開回合時顯示等待主持人。
+4) 匯出：CSV 欄位 room,round,like,dislike,timestamp。
+5) 測試：網址加上 ?test=1 可於 Console 看到測試結果。
+-->
+</body>
+</html>
